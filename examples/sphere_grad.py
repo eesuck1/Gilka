@@ -12,20 +12,20 @@ matplotlib.use("QtAgg")
 
 def spherical_l2(sphere: Sphere, nods: torch.Tensor, anchor: torch.Tensor) -> torch.Tensor:
     dist = sphere.dist(nods, anchor)
-    mse = torch.mean(dist ** 2)
+    mean_dist = torch.mean(dist ** 2)
 
-    return mse
+    return mean_dist
 
 
 def spherical_l1(sphere: Sphere, nods: torch.Tensor, anchor: torch.Tensor) -> torch.Tensor:
     dist = sphere.dist(nods, anchor)
-    mae = torch.mean(dist)
+    mean_dist = torch.mean(dist)
 
-    return mae
+    return mean_dist
 
 
 @torch.no_grad()
-def draw_points(nods: torch.Tensor, anchor: torch.Tensor, euclidian_anchor: torch.Tensor = None) -> None:
+def draw_points(nods: torch.Tensor, anchor: torch.Tensor, euclidean_anchor: torch.Tensor = None) -> None:
     n = 50
     phi_range = torch.linspace(0.0, 2 * torch.pi, n)
     theta_range = torch.linspace(0.0, torch.pi, n)
@@ -43,8 +43,8 @@ def draw_points(nods: torch.Tensor, anchor: torch.Tensor, euclidian_anchor: torc
     axis.scatter(nods[:, 0], nods[:, 1], nods[:, 2], color="tab:orange", s=50, depthshade=False, zorder=2)
     axis.scatter(anchor[:, 0], anchor[:, 1], anchor[:, 2], color="tab:green", s=50, depthshade=False, zorder=2)
 
-    if euclidian_anchor is not None:
-        axis.scatter(euclidian_anchor[:, 0], euclidian_anchor[:, 1], euclidian_anchor[:, 2], color="tab:red", s=50, depthshade=False, zorder=2)
+    if euclidean_anchor is not None:
+        axis.scatter(euclidean_anchor[:, 0], euclidean_anchor[:, 1], euclidean_anchor[:, 2], color="tab:red", s=50, depthshade=False, zorder=2)
 
     axis.view_init(elev=43, azim=36)
 
@@ -55,8 +55,8 @@ def draw_points(nods: torch.Tensor, anchor: torch.Tensor, euclidian_anchor: torc
 
 
 def optimize_spherical_l2() -> None:
-    d = 3
-    n = 10
+    d = 1023
+    n = 100
     sigma = 1.5
 
     nods = torch.ones(n, d)
@@ -66,7 +66,7 @@ def optimize_spherical_l2() -> None:
 
     nods = S2.proj_x(nods)
 
-    euclidian_anchor = S2.proj_x(nods.mean(dim=0, keepdim=True))
+    euclidean_anchor = S2.proj_x(nods.mean(dim=0, keepdim=True))
 
     anchor = torch.randn(1, d)
     anchor = S2.proj_x(anchor)
@@ -82,7 +82,7 @@ def optimize_spherical_l2() -> None:
     for epoch in range(epochs + 1):
         optimizer.zero_grad()
 
-        loss = spherical_l1(S2, nods, anchor)
+        loss = spherical_l2(S2, nods, anchor)
         loss.backward()
 
         optimizer.step()
@@ -92,10 +92,10 @@ def optimize_spherical_l2() -> None:
 
             print(f"[{epoch}/{epochs}] Mean L2 Distance: {loss.item():.4f} | New Learning Rate: {lr:.4f}")
 
-    print(f"RSGD Mean Distance: {spherical_l1(S2, nods, anchor).item():.4f}")
-    print(f"Euclidian Mean Distance: {spherical_l1(S2, nods, euclidian_anchor).item():.4f}")
+    print(f"RSGD Mean Distance: {spherical_l2(S2, nods, anchor).item():.4f}")
+    print(f"Projected Extrinsic Mean Distance: {spherical_l2(S2, nods, euclidean_anchor).item():.4f}")
 
-    draw_points(nods, anchor, euclidian_anchor)
+    # draw_points(nods, anchor, euclidean_anchor)
 
 
 def main():

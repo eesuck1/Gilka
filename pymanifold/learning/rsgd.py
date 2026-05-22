@@ -8,7 +8,7 @@ from ..geometry.manifold import Manifold
 
 class RSGD(optim.Optimizer):
     def __init__(self, params, manifold: Manifold, lr: float = 3e-4):
-        if lr <= 0.0:
+        if not 0.0 <= lr:
             raise ValueError(f"Invalid learning rate: {lr}")
 
         defaults = dict(lr=lr, manifold=manifold)
