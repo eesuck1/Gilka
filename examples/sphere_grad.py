@@ -5,7 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from pymanifold.geometry.sphere import Sphere
-from pymanifold.learning.rsgd import RSGD
+from pymanifold.learning.optimizer import RSGD, Ramsgrad
 
 matplotlib.use("QtAgg")
 
@@ -55,7 +55,7 @@ def draw_points(nods: torch.Tensor, anchor: torch.Tensor, euclidean_anchor: torc
 
 
 def optimize_spherical_l2() -> None:
-    d = 1023
+    d = 3
     n = 100
     sigma = 1.5
 
@@ -74,28 +74,29 @@ def optimize_spherical_l2() -> None:
 
     # draw_points(nods, anchor)
 
-    epochs = 1000
-    lr = 1e-2
+    epochs = 5000
+    lr = 0.1
 
-    optimizer = RSGD([anchor], S2, lr)
+    # optimizer = RSGD([anchor], S2, lr)
+    optimizer = Ramsgrad([anchor], S2, lr)
 
     for epoch in range(epochs + 1):
         optimizer.zero_grad()
 
-        loss = spherical_l2(S2, nods, anchor)
+        loss = spherical_l1(S2, nods, anchor)
         loss.backward()
 
         optimizer.step()
 
         if epoch % 50 == 0 and epoch != 0:
-            lr = lr * 0.95
+            # lr = lr * 0.95
 
             print(f"[{epoch}/{epochs}] Mean L2 Distance: {loss.item():.4f} | New Learning Rate: {lr:.4f}")
 
-    print(f"RSGD Mean Distance: {spherical_l2(S2, nods, anchor).item():.4f}")
-    print(f"Projected Extrinsic Mean Distance: {spherical_l2(S2, nods, euclidean_anchor).item():.4f}")
+    print(f"RSGD Mean Distance: {spherical_l1(S2, nods, anchor).item():.4f}")
+    print(f"Projected Extrinsic Mean Distance: {spherical_l1(S2, nods, euclidean_anchor).item():.4f}")
 
-    # draw_points(nods, anchor, euclidean_anchor)
+    draw_points(nods, anchor, euclidean_anchor)
 
 
 def main():

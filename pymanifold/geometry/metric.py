@@ -13,13 +13,13 @@ class Metric(ABC):
 
     @abstractmethod
     def inner(self, x: torch.Tensor, u: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def norm(self, x: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
         return torch.sqrt(self.inner(x, v, v))
 
 
-class Euclidian(Metric):
+class Euclidean(Metric):
     def __init__(self):
         super().__init__()
 
@@ -31,7 +31,7 @@ class Euclidian(Metric):
 
 
 if __name__ == "__main__":
-    euc_norm = Euclidian()
+    euc_norm = Euclidean()
     test_vec_1 = torch.tensor([0.0, 0.0, 1.0, 1.0, 0.0, 0.0]).view(1, 1, 2, 3)
     test_vec_2 = torch.tensor([0.0, 1.0, 0.0, 0.0, 0.0, 1.0]).view(1, 1, 2, 3)
 
