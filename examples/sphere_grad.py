@@ -1,5 +1,4 @@
 import torch
-import numpy
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -57,12 +56,12 @@ def draw_points(nods: torch.Tensor, anchor: torch.Tensor, euclidean_anchor: torc
 def optimize_spherical_l2() -> None:
     d = 3
     n = 100
-    sigma = 1.5
+    sigma = 150.0
 
     nods = torch.ones(n, d)
-    nods = nods + torch.randn_like(nods) * sigma
+    nods = nods + torch.rand_like(nods) * sigma
 
-    S2 = Sphere(3)
+    S2 = Sphere()
 
     nods = S2.proj_x(nods)
 
@@ -88,15 +87,14 @@ def optimize_spherical_l2() -> None:
 
         optimizer.step()
 
-        if epoch % 50 == 0 and epoch != 0:
-            # lr = lr * 0.95
+        if epoch % 50 == 0:
+            print(f"[{epoch}/{epochs}] Mean L1 Distance: {loss.item():.4f}")
 
-            print(f"[{epoch}/{epochs}] Mean L2 Distance: {loss.item():.4f} | New Learning Rate: {lr:.4f}")
+    with torch.no_grad():
+        print(f"RSGD Mean Distance: {spherical_l1(S2, nods, anchor).item():.4f}")
+        print(f"Projected Extrinsic Mean Distance: {spherical_l1(S2, nods, euclidean_anchor).item():.4f}")
 
-    print(f"RSGD Mean Distance: {spherical_l1(S2, nods, anchor).item():.4f}")
-    print(f"Projected Extrinsic Mean Distance: {spherical_l1(S2, nods, euclidean_anchor).item():.4f}")
-
-    draw_points(nods, anchor, euclidean_anchor)
+        draw_points(nods, anchor, euclidean_anchor)
 
 
 def main():

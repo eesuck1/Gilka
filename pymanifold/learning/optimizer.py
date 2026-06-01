@@ -3,17 +3,17 @@ from typing import Callable
 import torch
 import torch.optim as optim
 
-from geometry.manifold import Manifold
 from ..geometry.manifold import Manifold
 
 
 class Ramsgrad(optim.Optimizer):
     def __init__(self, params, manifold: Manifold, lr: float = 3e-4, betas: tuple[float, float] = (0.9, 0.99),
-                 eps: float = 1e-8):
+                 eps: float = 1e-8, use_retraction: bool = True, use_vec_transport: bool = True):
         if not 0.0 <= lr:
             raise ValueError(f"Invalid learning rate: {lr}")
 
-        defaults = dict(lr=lr, manifold=manifold, betas=betas, eps=eps)
+        defaults = dict(lr=lr, manifold=manifold, betas=betas, eps=eps,
+                        use_retraction=use_retraction, use_vec_transport=use_vec_transport)
         super().__init__(params, defaults)
 
     @torch.no_grad()
@@ -25,6 +25,8 @@ class Ramsgrad(optim.Optimizer):
         for group in self.param_groups:
             lr = group["lr"]
             manifold = group["manifold"]
+            use_retraction = group["use_retraction"]
+            use_vec_transport = group["use_vec_transport"]
 
             for params in group["params"]:
                 if params.grad is None:
@@ -56,20 +58,27 @@ class Ramsgrad(optim.Optimizer):
                 mean = prev_mean * beta_1t + grad * (1.0 - beta_1t)
                 mean_hat = mean / (torch.sqrt(norm_hat) + eps)
 
-                new_params = manifold.exp_map(params, -mean_hat, lr)
+                if use_retraction:
+                    new_params = manifold.retract(params, -lr * mean_hat)
+                else:
+                    new_params = manifold.exp_map(params, -lr * mean_hat)
 
-                state["prev_mean"] = manifold.transport(params, new_params, mean)
+                if use_vec_transport:
+                    state["prev_mean"] = manifold.vec_transport(params, new_params, mean)
+                else:
+                    state["prev_mean"] = manifold.transport(params, new_params, mean)
+
                 state["prev_norm"] = norm_hat
 
                 params.copy_(new_params)
 
 
 class RSGD(optim.Optimizer):
-    def __init__(self, params, manifold: Manifold, lr: float = 3e-4):
+    def __init__(self, params, manifold: Manifold, lr: float = 3e-4, use_retraction: bool = True):
         if not 0.0 <= lr:
             raise ValueError(f"Invalid learning rate: {lr}")
 
-        defaults = dict(lr=lr, manifold=manifold)
+        defaults = dict(lr=lr, manifold=manifold, use_retraction=use_retraction)
         super().__init__(params, defaults)
 
     @torch.no_grad()
@@ -81,11 +90,17 @@ class RSGD(optim.Optimizer):
         for group in self.param_groups:
             lr = group["lr"]
             manifold = group["manifold"]
+            use_retraction = group["use_retraction"]
 
             for params in group["params"]:
                 if params.grad is None:
                     continue
 
                 grad = manifold.proj_v(params, params.grad)
-                new_params = manifold.exp_map(params, -grad, lr)
+
+                if use_retraction:
+                    new_params = manifold.retract(params, -lr * grad)
+                else:
+                    new_params = manifold.exp_map(params, -lr * grad)
+
                 params.copy_(new_params)
